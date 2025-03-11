@@ -1,0 +1,38 @@
+groups:
+- name: Loki_Logs
+  rules:
+    - alert: LokiProcessTooManyRestarts
+      expr: 'changes(process_start_time_seconds{job=~"loki"}[15m]) > 2'
+      for: 0m
+      labels:
+        severity: warning
+      annotations:
+        summary: Слишком много перезапусков процесса Loki (инстанс {{ $labels.instance }})
+        description: "Процесс Loki перезапускался слишком много раз (цель {{ $labels.instance }})\n  ЗНАЧЕНИЕ = {{ $value }}\n  МЕТКИ = {{ $labels }}"
+
+    - alert: LokiRequestErrors
+      expr: '100 * sum(rate(loki_request_duration_seconds_count{status_code=~"5.."}[1m])) by (namespace, job, route) / sum(rate(loki_request_duration_seconds_count[1m])) by (namespace, job, route) > 10'
+      for: 15m
+      labels:
+        severity: critical
+      annotations:
+        summary: Ошибки запросов Loki (инстанс {{ $labels.instance }})
+        description: "{{ $labels.job }} и {{ $labels.route }} испытывают ошибки\n  ЗНАЧЕНИЕ = {{ $value }}\n  МЕТКИ = {{ $labels }}"
+
+    - alert: LokiRequestPanic
+      expr: 'sum(increase(loki_panic_total[10m])) by (namespace, job) > 0'
+      for: 5m
+      labels:
+        severity: critical
+      annotations:
+        summary: Паника в запросах Loki (инстанс {{ $labels.instance }})
+        description: "{{ $labels.job }} испытывает увеличение паник при запросах на {{ printf \"%.2f\" $value }}%\n  ЗНАЧЕНИЕ = {{ $value }}\n  МЕТКИ = {{ $labels }}"
+
+    - alert: LokiRequestLatency
+      expr: '(histogram_quantile(0.99, sum(rate(loki_request_duration_seconds_bucket{route!~"(?i).*tail.*"}[5m])) by (le)))  > 1'
+      for: 5m
+      labels:
+        severity: critical
+      annotations:
+        summary: Задержка запросов Loki (инстанс {{ $labels.instance }})
+        description: "{{ $labels.job }} {{ $labels.route }} испытывает задержку на уровне 99-процентов: {{ printf \"%.2f\" $value }}s\n  ЗНАЧЕНИЕ = {{ $value }}\n  МЕТКИ = {{ $labels }}"

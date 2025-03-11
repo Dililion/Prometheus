@@ -1,0 +1,227 @@
+groups:
+- name: Prometheus
+  rules:
+#  - alert: PrometheusJobMissing
+#    expr: absent(up{job="prometheus"})
+#    for: 1m
+#    labels:
+#      severity: warning
+#    annotations:
+#      summary: "Пропал job Prometheus ({{ $labels.instance }})"
+#      description: "Job Prometheus пропал. Возможно, служба перестала работать или была удалена.\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+
+  - alert: PrometheusAllTargetsMissing
+    expr: count by (job) (up) == 0
+    for: 1m
+    labels:
+      severity: critical
+    annotations:
+      summary: "Все цели Prometheus недоступны ({{ $labels.instance }})"
+      description: "Все цели для job Prometheus недоступны. Возможно, проблема с экспортерами или сетевым подключением.\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+
+  - alert: PrometheusTargetMissing
+    expr: up == 0
+    for: 1m
+    labels:
+      severity: critical
+    annotations:
+      summary: "Цель Prometheus недоступна ({{ $labels.instance }})"
+      description: "Цель Prometheus пропала. Возможно, экспортер упал или недоступен.\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+
+  - alert: PrometheusConfigurationReloadFailure
+    expr: prometheus_config_last_reload_successful != 1
+    for: 1m
+    labels:
+      severity: warning
+    annotations:
+      summary: "Ошибка перезагрузки конфигурации Prometheus ({{ $labels.instance }})"
+      description: "Prometheus не смог перезагрузить конфигурацию. Проверьте корректность конфигурационного файла.\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+
+  - alert: PrometheusTooManyRestarts
+    expr: changes(process_start_time_seconds{job=~"prometheus|pushgateway|alertmanager"}[15m]) > 2
+    for: 1m
+    labels:
+      severity: warning
+    annotations:
+      summary: "Слишком много перезапусков Prometheus ({{ $labels.instance }})"
+      description: "Prometheus перезапускался более двух раз за последние 15 минут. Возможно, он находится в состоянии постоянного перезапуска.\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+
+  - alert: PrometheusAlertmanagerConfigurationReloadFailure
+    expr: alertmanager_config_last_reload_successful != 1
+    for: 1m
+    labels:
+      severity: warning
+    annotations:
+      summary: "Ошибка перезагрузки конфигурации Alertmanager ({{ $labels.instance }})"
+      description: "Alertmanager не смог перезагрузить конфигурацию. Проверьте корректность конфигурационного файла.\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+
+  - alert: PrometheusAlertmanagerConfigNotSynced
+    expr: count(count_values("config_hash", alertmanager_config_hash)) > 1
+    for: 1m
+    labels:
+      severity: warning
+    annotations:
+      summary: "Конфигурации Alertmanager не синхронизированы ({{ $labels.instance }})"
+      description: "Конфигурации экземпляров Alertmanager различаются. Проверьте настройки кластера.\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+
+  - alert: PrometheusAlertmanagerE2eDeadManSwitch
+    expr: vector(1)
+    for: 1m
+    labels:
+      severity: critical
+    annotations:
+      summary: "Тест работоспособности Alertmanager ({{ $labels.instance }})"
+      description: "Этот алерт всегда активен и используется для проверки работоспособности Alertmanager.\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+
+  - alert: PrometheusNotConnectedToAlertmanager
+    expr: prometheus_notifications_alertmanagers_discovered < 1
+    for: 1m
+    labels:
+      severity: critical
+    annotations:
+      summary: "Prometheus не подключен к Alertmanager ({{ $labels.instance }})"
+      description: "Prometheus не может подключиться к Alertmanager. Проверьте настройки и доступность Alertmanager.\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+
+  - alert: PrometheusRuleEvaluationFailures
+    expr: increase(prometheus_rule_evaluation_failures_total[3m]) > 0
+    for: 1m
+    labels:
+      severity: critical
+    annotations:
+      summary: "Ошибки при оценке правил Prometheus ({{ $labels.instance }})"
+      description: "Prometheus столкнулся с ошибками при оценке правил. Это может привести к пропуску алертов.\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+
+  - alert: PrometheusTemplateTextExpansionFailures
+    expr: increase(prometheus_template_text_expansion_failures_total[3m]) > 0
+    for: 1m
+    labels:
+      severity: critical
+    annotations:
+      summary: "Ошибки при обработке шаблонов Prometheus ({{ $labels.instance }})"
+      description: "Prometheus столкнулся с ошибками при обработке шаблонов. Проверьте корректность шаблонов.\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+
+  - alert: PrometheusRuleEvaluationSlow
+    expr: prometheus_rule_group_last_duration_seconds > prometheus_rule_group_interval_seconds
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: "Медленная оценка правил Prometheus ({{ $labels.instance }})"
+      description: "Оценка правил Prometheus занимает больше времени, чем интервал их выполнения. Возможно, проблема с хранилищем или слишком сложные запросы.\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+
+  - alert: PrometheusNotificationsBacklog
+    expr: min_over_time(prometheus_notifications_queue_length[10m]) > 0
+    for: 1m
+    labels:
+      severity: warning
+    annotations:
+      summary: "Очередь уведомлений Prometheus переполнена ({{ $labels.instance }})"
+      description: "Очередь уведомлений Prometheus не очищалась в течение 10 минут. Проверьте работу Alertmanager.\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+
+  - alert: PrometheusAlertmanagerNotificationFailing
+    expr: rate(alertmanager_notifications_failed_total[1m]) > 0
+    for: 1m
+    labels:
+      severity: critical
+    annotations:
+      summary: "Ошибка отправки уведомлений Alertmanager ({{ $labels.instance }})"
+      description: "Alertmanager не может отправить уведомления. Проверьте настройки и доступность каналов уведомлений.\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+
+  - alert: PrometheusTargetEmpty
+    expr: prometheus_sd_discovered_targets == 0
+    for: 1m
+    labels:
+      severity: critical
+    annotations:
+      summary: "Нет доступных целей в Prometheus ({{ $labels.instance }})"
+      description: "Prometheus не обнаружил ни одной цели. Проверьте настройки service discovery.\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+
+  - alert: PrometheusTargetScrapingSlow
+    expr: prometheus_target_interval_length_seconds{quantile="0.9"} > 60
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: "Медленный сбор метрик Prometheus ({{ $labels.instance }})"
+      description: "Prometheus слишком долго собирает метрики. Возможно, проблема с экспортерами или хранилищем.\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+
+  - alert: PrometheusLargeScrape
+    expr: increase(prometheus_target_scrapes_exceeded_sample_limit_total[10m]) > 10
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: "Превышен лимит метрик при сборе ({{ $labels.instance }})"
+      description: "Prometheus превысил лимит метрик при сборе данных. Увеличьте лимит или оптимизируйте запросы.\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+
+  - alert: PrometheusTargetScrapeDuplicate
+    expr: increase(prometheus_target_scrapes_sample_duplicate_timestamp_total[5m]) > 0
+    for: 1m
+    labels:
+      severity: warning
+    annotations:
+      summary: "Дублирование метрик при сборе ({{ $labels.instance }})"
+      description: "Prometheus обнаружил дублирование метрик с одинаковыми временными метками. Проверьте экспортеры.\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+
+  - alert: PrometheusTsdbCheckpointCreationFailures
+    expr: increase(prometheus_tsdb_checkpoint_creations_failed_total[1m]) > 0
+    for: 1m
+    labels:
+      severity: critical
+    annotations:
+      summary: "Ошибка создания контрольной точки TSDB ({{ $labels.instance }})"
+      description: "Prometheus не смог создать контрольную точку TSDB. Проверьте хранилище и логи.\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+
+  - alert: PrometheusTsdbCheckpointDeletionFailures
+    expr: increase(prometheus_tsdb_checkpoint_deletions_failed_total[1m]) > 0
+    for: 1m
+    labels:
+      severity: critical
+    annotations:
+      summary: "Ошибка удаления контрольной точки TSDB ({{ $labels.instance }})"
+      description: "Prometheus не смог удалить контрольную точку TSDB. Проверьте хранилище и логи.\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+
+  - alert: PrometheusTsdbCompactionsFailed
+    expr: increase(prometheus_tsdb_compactions_failed_total[1m]) > 0
+    for: 1m
+    labels:
+      severity: critical
+    annotations:
+      summary: "Ошибка компрессии TSDB ({{ $labels.instance }})"
+      description: "Prometheus не смог выполнить компрессию данных TSDB. Проверьте хранилище и логи.\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+
+  - alert: PrometheusTsdbHeadTruncationsFailed
+    expr: increase(prometheus_tsdb_head_truncations_failed_total[1m]) > 0
+    for: 1m
+    labels:
+      severity: critical
+    annotations:
+      summary: "Ошибка усечения данных TSDB ({{ $labels.instance }})"
+      description: "Prometheus не смог усечь данные TSDB. Проверьте хранилище и логи.\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+
+  - alert: PrometheusTsdbReloadFailures
+    expr: increase(prometheus_tsdb_reloads_failures_total[1m]) > 0
+    for: 1m
+    labels:
+      severity: critical
+    annotations:
+      summary: "Ошибка перезагрузки TSDB ({{ $labels.instance }})"
+      description: "Prometheus не смог перезагрузить TSDB. Проверьте хранилище и логи.\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+
+  - alert: PrometheusTsdbWalCorruptions
+    expr: increase(prometheus_tsdb_wal_corruptions_total[1m]) > 0
+    for: 1m
+    labels:
+      severity: critical
+    annotations:
+      summary: "Повреждение WAL TSDB ({{ $labels.instance }})"
+      description: "Prometheus обнаружил повреждение WAL (Write-Ahead Log). Проверьте хранилище и логи.\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+
+  - alert: PrometheusTsdbWalTruncationsFailed
+    expr: increase(prometheus_tsdb_wal_truncations_failed_total[1m]) > 0
+    for: 1m
+    labels:
+      severity: critical
+    annotations:
+      summary: "Ошибка усечения WAL TSDB ({{ $labels.instance }})"
+      description: "Prometheus не смог усечь WAL (Write-Ahead Log). Проверьте хранилище и логи.\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
